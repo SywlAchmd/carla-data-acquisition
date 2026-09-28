@@ -1,0 +1,15 @@
+# data dan hasil rekaman
+out/
+dataset_root/
+check/
+*.zip
+*.log
+
+# gambar hasil figure/debug
+*.png
+*.jpg
+*.jpeg
+
+__pycache__/
+*.pyc
+.venv/
