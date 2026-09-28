@@ -1,4 +1,4 @@
-# carla-yolopx-dataset
+# carla-data-acquisition
 
 Generator dataset sintetis dari CARLA 0.9.16 untuk melatih YOLOPX: deteksi mobil,
 drivable area, dan lane line. Label kotak 2D dibuat dengan algoritma **CarFree**
