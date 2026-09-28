@@ -3,7 +3,7 @@
 
     python3 seg_gt.py --raw out/raw
 
-Writes out/raw/run_XXXX/{da,ll,ll_cont}/NNNNNN.png -- 8-bit, 0 = background,
+Writes out/raw/<town>_run_XXXX/{da,ll,ll_cont}/NNNNNN.png -- 8-bit, 0 = background,
 255 = foreground, which is what YOLOPX's loader expects (it thresholds at >1).
 
 Drivable area

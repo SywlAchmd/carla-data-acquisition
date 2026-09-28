@@ -9,10 +9,10 @@ Keys
     A / D       steer left / right
     Q           toggle reverse
     SPACE       hand brake
-    R           start / stop recording (every start opens a new run_XXXX)
+    R           start / stop recording (every start opens a new <town>_run_XXXX)
     ESC         quit
 
-A recording lands in out/raw/run_XXXX/ in the same layout capture_overtaking.py
+A recording lands in out/raw/<town>_run_XXXX/ in the same layout capture_overtaking.py
 writes, so carfree_gt.py, seg_gt.py and build_yolopx_dataset.py take it as is.
 
 This client owns the simulation clock (synchronous mode) and hosts the Traffic
@@ -34,13 +34,7 @@ except ImportError:
     sys.exit("carla module not importable -- pip install carla==0.9.16")
 
 from rig import (EGO_BLUEPRINT, STEER_LIMIT_RAD, SensorHub, any_in_view, bgra,
-                 camera_block, drivable_lanes, make_camera, vehicles_near)
-
-
-def next_run_id(raw_root):
-    os.makedirs(raw_root, exist_ok=True)
-    ids = [int(d[4:]) for d in os.listdir(raw_root) if d.startswith("run_") and d[4:].isdigit()]
-    return "run_%04d" % (max(ids, default=-1) + 1)
+                 camera_block, drivable_lanes, make_camera, next_run_id, vehicles_near)
 
 
 def mount_check(ego, cam, cmap):
@@ -61,11 +55,11 @@ def mount_check(ego, cam, cmap):
 
 
 class Recorder:
-    """One recording = one run_XXXX folder, same files as the scripted capture."""
+    """One recording = one <town>_run_XXXX folder, same files as the scripted capture."""
 
     def __init__(self, args, world, ego, cmap, map_name):
         self.args, self.world, self.ego, self.cmap = args, world, ego, cmap
-        self.run_id = next_run_id(os.path.join(args.out, "raw"))
+        self.run_id = next_run_id(os.path.join(args.out, "raw"), map_name)
         self.dir = os.path.join(args.out, "raw", self.run_id)
         subdirs = ["rgb", "inst"] + (["depth"] if args.depth else [])
         for sub in subdirs:

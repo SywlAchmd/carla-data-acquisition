@@ -41,6 +41,7 @@ except ImportError:
 
 import cv2
 
+from carfree_gt import run_number
 from rig import (DRIVING, EGO_BLUEPRINT, SensorHub, any_in_view, bgra, camera_block,
                  drivable_lanes, make_camera, pick_blueprints,
                  same_direction_neighbours, vehicles_near)
@@ -550,17 +551,17 @@ def main():
         run_i, done_before = 0, 0
         raw_root = os.path.join(args.out, "raw")
         if args.resume and os.path.isdir(raw_root):
-            existing = sorted(d for d in os.listdir(raw_root) if d.startswith("run_"))
-            run_i = max((int(d[4:]) for d in existing), default=-1) + 1
+            existing = sorted(d for d in os.listdir(raw_root) if run_number(d) is not None)
+            run_i = max((run_number(d) for d in existing), default=-1) + 1
             done_before = sum(len(os.listdir(os.path.join(raw_root, d, "rgb")))
                               for d in existing if os.path.isdir(os.path.join(raw_root, d, "rgb")))
             rng = random.Random(args.seed + run_i)
-            print("resuming at %s with %d frames already captured" % ("run_%04d" % run_i, done_before))
+            print("resuming at run %04d with %d frames already captured" % (run_i, done_before))
         total, t0 = done_before, time.time()
         while total < args.total_frames:
             kind = kinds[run_i % len(kinds)]
             weather = weathers[run_i % len(weathers)]
-            run_id = "run_%04d" % run_i
+            run_id = "town04_run_%04d" % run_i
             try:
                 n, reason = run_scenario(world, cmap, segs, pick_blueprints(world), rng,
                                          args, run_id, kind, weather, tm)

@@ -6,12 +6,13 @@ Camera:  RGB + depth + instance segmentation at the same transform,
          1280x720, 90 deg horizontal FOV, 1.65 m above the road (KITTI cam2
          height), 1.68 m ahead of the rear axle, on the centre line, level.
 """
+import os
 import queue
 
 import numpy as np
 import carla
 
-from carfree_gt import build_K, project, world_to_cam
+from carfree_gt import build_K, project, run_number, world_to_cam
 
 EGO_BLUEPRINT = "vehicle.dodge.charger_2020"
 
@@ -28,6 +29,13 @@ CAM_Z = 1.65                    # m above the road
 STEER_LIMIT_RAD = 0.5           # 28.6 deg, same limit the MPC uses (wheel max is 70 deg)
 
 DRIVING = carla.LaneType.Driving
+
+
+def next_run_id(raw_root, town):
+    """'<town>_run_NNNN'. Numbers continue across towns, so each one is unique."""
+    os.makedirs(raw_root, exist_ok=True)
+    nums = [n for n in map(run_number, os.listdir(raw_root)) if n is not None]
+    return "%s_run_%04d" % (town.lower(), max(nums, default=-1) + 1)
 
 
 # ---------------------------------------------------------------- sensors

@@ -60,7 +60,7 @@ posisinya menjadi `x = 1,68 - 1,433 = 0,247 m`, `y = 0`, `z = 1,65 m`, tanpa rot
 Semua sensor kamera berada di transform yang sama sehingga piksel RGB, depth, dan
 instance saling sejajar 1:1.
 
-Intrinsik (ditulis ke `calib/seqXXXX.txt`): `fx = fy = 640`, `cx = 640`, `cy = 360`.
+Intrinsik (ditulis ke `calib/<town>_seqXXXX.txt`): `fx = fy = 640`, `cx = 640`, `cy = 360`.
 FOV vertikal mengikuti rasio 16:9, yaitu sekitar 58,7°.
 
 Setiap kali dijalankan, `manual_drive.py` mengukur ulang posisi kamera dari posisi roda
@@ -125,8 +125,9 @@ Akan muncul jendela preview dari kamera depan.
 | R | mulai / berhenti merekam |
 | ESC | keluar |
 
-Setiap kali R ditekan untuk mulai, dibuat folder baru `out/raw/run_XXXX/`. Selama
-merekam, di pojok kiri atas muncul tulisan merah `REC run_XXXX` beserta jumlah frame.
+Setiap kali R ditekan untuk mulai, dibuat folder baru `out/raw/<town>_run_XXXX/`,
+misalnya `out/raw/town04_run_0003/`. Selama merekam, di pojok kiri atas muncul tulisan
+merah `REC town04_run_0003` beserta jumlah frame.
 Simulasi berjalan 20 Hz dan disimpan 1 dari 2 tick (10 Hz). Secara default frame yang
 tidak memuat mobil lain tidak disimpan; pakai `--keep-empty` kalau butuh sampel negatif.
 
@@ -265,7 +266,7 @@ depan bisa menyatu dengan kap itu.
 ## Struktur data mentah
 
 ```
-out/raw/run_0000/
+out/raw/town04_run_0000/
   run.json          peta, skenario, cuaca, parameter, posisi kamera, alasan run berhenti
   meta.jsonl        satu baris per frame: matriks kamera, kecepatan dan kontrol ego,
                     tabrakan, geometri lajur, 8 titik sudut kotak 3D setiap mobil
@@ -277,6 +278,39 @@ out/raw/run_0000/
   ll/000000.png     hasil seg_gt.py, lane line versi marka
   ll_cont/000000.png hasil seg_gt.py, lane line versi tersambung
 ```
+
+## Penamaan file
+
+Data mentah, satu folder per rekaman:
+
+```
+out/raw/town04_run_0003/rgb/000012.jpg
+        ^^^^^^     ^^^^     ^^^^^^
+        map        run      frame
+```
+
+- `town04` adalah nama map dalam huruf kecil (`Town10HD_Opt` menjadi `town10hd_opt`).
+- Nomor run berlanjut untuk semua map sekaligus, jadi tidak pernah ada dua run dengan
+  nomor yang sama, walaupun map-nya berbeda.
+- Nomor frame dimulai dari `000000` di setiap run dan hanya bertambah untuk frame yang
+  benar-benar disimpan, jadi urutannya selalu rapat. Nomor tick simulasinya tercatat di
+  `meta.jsonl` sebagai `sim_frame`.
+- Satu frame memakai nama yang sama di semua subfolder (`rgb/`, `inst/`, `depth/`,
+  `det/`, `da/`, `ll/`, `ll_cont/`).
+
+Dataset:
+
+```
+images/train/town04_seq0003_frame00012.jpg
+             ^^^^^^ ^^^^^^^      ^^^^^
+             map    nomor run    nomor frame dari data mentah
+```
+
+`seq0003` selalu berasal dari `town04_run_0003`, sehingga setiap gambar di dataset bisa
+ditelusuri balik ke folder rekamannya. Nama dasar yang sama dipakai di
+`det_annotations/`, `da_seg_annotations/`, dan `ll_seg_annotations/`. Di dataset, nomor
+frame bisa melompat karena frame tanpa kotak mobil dibuang saat build. Folder lama
+bernama `run_XXXX` (tanpa nama map) tetap dikenali.
 
 ## Cara label kotak dibuat
 

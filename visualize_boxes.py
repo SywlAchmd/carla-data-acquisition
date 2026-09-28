@@ -2,7 +2,7 @@
 """Overlay the generated boxes on the images -- the eyeball check for precision.
 
     python3 visualize_boxes.py --dataset dataset_root --n 40 --out check/
-    python3 visualize_boxes.py --raw out/raw/run_0000 --n 40 --out check/
+    python3 visualize_boxes.py --raw out/raw/town04_run_0000 --n 40 --out check/
 
 Green = clean, orange = truncated, red = occluded. --masks also tints the
 drivable area and the lane lines so you can check all three heads at once.
@@ -53,7 +53,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset")
-    ap.add_argument("--raw", help="a single run_XXXX directory instead")
+    ap.add_argument("--raw", help="a single <town>_run_XXXX directory instead")
     ap.add_argument("--split", default="all")
     ap.add_argument("--n", type=int, default=30)
     ap.add_argument("--out", default="check")

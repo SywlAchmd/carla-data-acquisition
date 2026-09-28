@@ -19,6 +19,7 @@ import argparse
 import collections
 import json
 import os
+import re
 import sys
 
 import cv2
@@ -160,6 +161,14 @@ def fit_to_boundary(box, mask):
     # x2/y2 are exclusive so that width == x2 - x1 (BDD100K convention)
     return (float(x1 + cols[0]), float(y1 + rows[0]),
             float(x1 + cols[-1] + 1), float(y1 + rows[-1] + 1))
+
+
+# ---------------------------------------------------------------- raw layout
+
+def run_number(dirname):
+    """3 for 'town04_run_0003' (and for the older 'run_0003'), None otherwise."""
+    m = re.search(r"(?:^|_)run_(\d+)$", dirname)
+    return int(m.group(1)) if m else None
 
 
 # ---------------------------------------------------------------- masks

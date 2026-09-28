@@ -6,7 +6,10 @@
       det_annotations/{all,train,val}/town04_seq0001_frame00012.json
       da_seg_annotations/{train,val}      (empty: detection first)
       ll_seg_annotations/{train,val}      (empty)
-      calib/seq0001.txt                   (KITTI-style, for audit only)
+      calib/town04_seq0001.txt            (KITTI-style, for audit only)
+
+seqNNNN is the run number of out/raw/<town>_run_NNNN, so a dataset name always
+points back to the folder it came from, even after a run is deleted.
 
 Everything lands in `all/` -- run split_dataset.py afterwards.
 Images are hardlinked by default (instant, no extra disk); --copy to duplicate.
@@ -18,7 +21,7 @@ import json
 import os
 import shutil
 
-from carfree_gt import build_K
+from carfree_gt import build_K, run_number
 
 SUBSETS = ("all", "train", "val")
 LANE_DIRS = {"marking": "ll", "continuous": "ll_cont"}      # written by seg_gt.py
@@ -75,9 +78,11 @@ def main():
             os.remove(os.path.join(pool, stale))
     os.makedirs(os.path.join(args.dataset, "calib"), exist_ok=True)
 
-    runs = sorted(d for d in os.listdir(args.raw) if os.path.isdir(os.path.join(args.raw, d)))
+    runs = sorted((d for d in os.listdir(args.raw)
+                   if os.path.isdir(os.path.join(args.raw, d)) and run_number(d) is not None),
+                  key=run_number)
     n_img = n_box = n_empty = n_trunc = n_occ = n_noseg = 0
-    for i, run in enumerate(runs):
+    for run in runs:
         rd = os.path.join(args.raw, run)
         det_dir = os.path.join(rd, "det")
         if not os.path.isdir(det_dir):
@@ -85,8 +90,9 @@ def main():
             continue
         meta = json.load(open(os.path.join(rd, "run.json")))
         town = meta.get("map", "Town04").lower()
-        seq = "seq%04d" % i
-        write_calib(os.path.join(args.dataset, "calib", seq + ".txt"), meta["camera"], town, seq)
+        seq = "seq%04d" % run_number(run)
+        write_calib(os.path.join(args.dataset, "calib", "%s_%s.txt" % (town, seq)),
+                    meta["camera"], town, seq)
 
         for fn in sorted(os.listdir(det_dir)):
             stem = os.path.splitext(fn)[0]

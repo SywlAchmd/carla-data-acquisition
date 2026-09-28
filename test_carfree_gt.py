@@ -18,6 +18,14 @@ def car_mask(x1, y1, x2, y2):
     return m
 
 
+def test_run_number():
+    from carfree_gt import run_number
+    assert run_number("town04_run_0003") == 3
+    assert run_number("town10hd_opt_run_0120") == 120
+    assert run_number("run_0007") == 7              # folders from before the town prefix
+    assert run_number("check") is None and run_number("town04_run_x") is None
+
+
 def test_projection():
     K = build_K(W, H, 90.0)
     assert abs(K[0, 0] - 640.0) < 1e-6, K            # f = w / 2tan(45)
