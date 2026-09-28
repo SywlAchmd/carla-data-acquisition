@@ -220,7 +220,7 @@ folder `out/raw` yang sama.
 
 ```bash
 # 1. label kotak
-python3 carfree_gt.py --raw out/raw --mask-source instance --min-box-h 25
+python3 carfree_gt.py --raw out/raw --mask-source instance
 
 # 2. mask drivable area + lane line
 python3 seg_gt.py --raw out/raw
@@ -413,11 +413,23 @@ dua kali lipat. Kecualikan `*/all/` saat membagikan dataset.
   sehingga frame yang berurutan dari satu run bisa masuk train dan val sekaligus. Itu
   cukup untuk mengecek pipeline, tetapi untuk angka mAP yang dilaporkan pakai
   `--by-sequence`.
-- **Kotak kecil dibuang.** `--min-box-h 25` mengikuti batas tinggi minimum KITTI. Mobil
-  yang lebih jauh dari sekitar 38 m jatuh di bawah batas ini. KITTI menandai objek
-  seperti itu sebagai *DontCare*, sedangkan loader YOLOPX tidak punya konsep itu,
-  sehingga objek tersebut dihapus dan model menganggapnya latar belakang. Nilai 16 px
-  masih bisa dipakai kalau dataset perlu lebih besar.
+- **Kotak kecil dibuang.** Kotak yang tingginya kurang dari 25 px dibuang
+  (`--min-box-h`, default 25). Angka ini diambil dari benchmark deteksi KITTI, yang
+  membagi objek menjadi tiga tingkat: Easy (tinggi kotak minimal 40 px), Moderate dan
+  Hard (minimal 25 px). Objek di bawah 25 px tidak ikut dihitung di evaluasi KITTI.
+  Dataset `yolopx_dataset_v2` juga dibuat dengan batas ini.
+
+  Batasnya dalam piksel, bukan meter, jadi jarak yang setara bergantung pada panjang
+  fokus. Di sini fy = 640 px, sedangkan KITTI sekitar 721 px. Diukur dari label v2
+  (field `carla.distance`), kotak di dekat batas 25 px berjarak median 39,6 m, dengan
+  rentang 32 sampai 55 m tergantung tinggi mobilnya. 95% dari semua kotak berada dalam
+  39,6 m, dan yang terjauh 55,5 m.
+
+  KITTI menandai objek yang terlalu kecil sebagai *DontCare*, sedangkan loader YOLOPX
+  tidak punya konsep itu, sehingga objek tersebut dihapus dan model menganggapnya latar
+  belakang. Kalau dataset perlu lebih besar, `--min-box-h 16` menjangkau sekitar 60 m.
+  Di bawah itu, setelah YOLOPX mengecilkan gambar ke 640, mobil tinggal kurang dari 8 px
+  (satu stride output) dan praktis tidak bisa dipelajari.
 - **Persimpangan.** Geometri drivable area mengikuti cabang pertama dari `next()`. Di
   persimpangan, cabang lain tidak ikut berlabel. Untuk rekaman manual di kota, perhatikan
   hal ini saat mengecek hasil.
@@ -430,6 +442,9 @@ dua kali lipat. Kecualikan `*/all/` saat membagikan dataset.
 
 - Jang, J., Lee, H., & Kim, J.-C. (2022). CarFree: Hassle-Free Object Detection Dataset
   Generation Using Carla Autonomous Driving Simulator. *Applied Sciences*, 12(1), 281.
+- Geiger, A., Lenz, P., & Urtasun, R. (2012). Are we ready for autonomous driving? The
+  KITTI vision benchmark suite. *CVPR 2012*. (tingkat Easy/Moderate/Hard dan batas
+  tinggi kotak 40/25 px)
 - Geiger, A., Lenz, P., Stiller, C., & Urtasun, R. (2013). Vision meets robotics: The
   KITTI dataset. *The International Journal of Robotics Research*, 32(11).
 - CARLA Simulator 0.9.16, https://carla.org

@@ -348,10 +348,11 @@ def main():
     ap.add_argument("--visibility", choices=["center", "multi5"], default="center",
                     help="Algorithm 2 probe: single center pixel or 5-point sampling")
     ap.add_argument("--min-box-px", type=int, default=8)
-    ap.add_argument("--min-box-h", type=float, default=0.0,
-                    help="drop boxes shorter than this (px). KITTI uses 25; 16 is "
-                         "where the object falls below one output stride after "
-                         "YOLOPX letterboxes to 640")
+    ap.add_argument("--min-box-h", type=float, default=25.0,
+                    help="drop boxes shorter than this (px). 25 is KITTI's minimum "
+                         "for its Moderate/Hard levels and what yolopx_dataset_v2 "
+                         "used; a car hits it at ~40 m. 16 (~60 m) is where it falls "
+                         "below one output stride after YOLOPX letterboxes to 640")
     ap.add_argument("--max-distance", type=float, default=120.0)
     args = ap.parse_args()
 
