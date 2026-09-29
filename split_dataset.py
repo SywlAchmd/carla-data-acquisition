@@ -6,6 +6,11 @@ frames of one run can land on both sides. That is deliberate for a quick
 pipeline check; switch to --by-sequence before quoting any mAP number.
 
     python3 split_dataset.py --dataset dataset_root --val 0.2
+    python3 split_dataset.py --dataset dataset_root --val-seqs 32 --test-seqs 33,34
+
+--val-seqs / --test-seqs pick whole recordings by their run number (the NNNN
+in <town>_run_NNNN); every other recording goes to train and --val/--test are
+ignored.
 """
 import argparse
 import json
@@ -38,6 +43,10 @@ def main():
     ap.add_argument("--mode", choices=["link", "copy", "move"], default="link")
     ap.add_argument("--by-sequence", action="store_true",
                     help="split whole sequences instead of individual frames")
+    ap.add_argument("--val-seqs", default="",
+                    help="comma-separated run numbers for val, e.g. 32,33")
+    ap.add_argument("--test-seqs", default="",
+                    help="comma-separated run numbers for test, e.g. 34")
     args = ap.parse_args()
 
     all_img = os.path.join(args.dataset, "images", "all")
@@ -46,7 +55,21 @@ def main():
         raise SystemExit("no images in %s" % all_img)
 
     rng = random.Random(args.seed)
-    if args.by_sequence:
+    val_seqs = {int(x) for x in args.val_seqs.split(",") if x.strip()}
+    test_seqs = {int(x) for x in args.test_seqs.split(",") if x.strip()}
+    if val_seqs & test_seqs:
+        raise SystemExit("run(s) %s are in both --val-seqs and --test-seqs"
+                         % sorted(val_seqs & test_seqs))
+    if val_seqs or test_seqs:
+        seq_of = lambda n: int(n.split("_seq")[1].split("_frame")[0])
+        found = {seq_of(n) for n in names}
+        missing = (val_seqs | test_seqs) - found
+        if missing:
+            raise SystemExit("run(s) %s not in %s" % (sorted(missing), all_img))
+        of = lambda n: ("val" if seq_of(n) in val_seqs
+                        else "test" if seq_of(n) in test_seqs else "train")
+        splits = {s: [n for n in names if of(n) == s] for s in ("train", "val", "test")}
+    elif args.by_sequence:
         seqs = sorted({n.split("_frame")[0] for n in names})
         rng.shuffle(seqs)
         n_val = max(1, int(len(seqs) * args.val))

@@ -261,8 +261,8 @@ python3 seg_gt.py --raw out/raw
 # 3. susun folder YOLOPX (--lanes marking atau continuous, lihat bagian lane line)
 python3 build_yolopx_dataset.py --raw out/raw --dataset dataset_root --lanes marking
 
-# 4. bagi train / val / test
-python3 split_dataset.py --dataset dataset_root --val 0.1 --test 0.1
+# 4. bagi train / val / test per rekaman (lihat bagian pembagian di bawah)
+python3 split_dataset.py --dataset dataset_root --val-seqs 32 --test-seqs 33,34
 
 # 5. cek dengan aturan loader YOLOPX
 python3 verify_yolopx_format.py --dataset dataset_root
@@ -294,6 +294,47 @@ disimpan (kecuali direkam dengan `--keep-empty`); mobil yang lebih jauh dari
 Gunakan `--mask-source instance`. Kap mobil ego selalu terlihat di bawah gambar dan di
 peta semantic ikut ber-tag `Car`. Dengan mask semantic, mobil yang berada tepat di
 depan bisa menyatu dengan kap itu.
+
+## Pembagian train / val / test
+
+Dataset dibagi **per rekaman**, bukan per frame. Satu rekaman adalah satu folder
+`<town>_run_NNNN` (satu kali tekan R di `manual_drive.py`), dan nomornya ikut di nama
+file dataset: `town04_run_0032/rgb/000015.jpg` menjadi `town04_seq0032_frame00015.jpg`.
+`split_dataset.py` membaca nomor `seqNNNN` itu dan memasukkan seluruh frame satu rekaman
+ke split yang sama.
+
+Alasannya, frame yang berurutan dalam satu rekaman hampir identik. Kalau dibagi per
+frame secara acak, frame yang nyaris sama bisa masuk train dan test sekaligus, sehingga
+model cukup "menghafal" untuk mendapat skor tinggi. Dengan pembagian per rekaman, val
+dan test benar-benar berisi situasi yang belum pernah dilihat model.
+
+Rekaman val dan test diambil dari **Town04**, karena skenario overtaking dengan MPC
+diuji di jalan tol Town04. Model persepsi harus dinilai di lingkungan tempat ia dipakai.
+Kota lain (Town01, Town02, Town05, Town10HD) seluruhnya masuk train untuk menambah
+variasi, dan sebagian rekaman Town04 juga masuk train supaya model mengenal jalan tol.
+
+```bash
+python3 split_dataset.py --dataset dataset_root --val-seqs 32 --test-seqs 33,34
+```
+
+| split | rekaman | fungsi |
+|---|---|---|
+| train | Town04 run 28, 29, 30, 31 + semua rekaman kota lain | melatih model |
+| val | Town04 run 32 | memilih checkpoint terbaik selama training |
+| test | Town04 run 33, 34 | angka akhir di laporan, tidak dipakai selama tuning |
+
+Rekaman yang tidak disebut di `--val-seqs` atau `--test-seqs` otomatis masuk train.
+Pembagian yang dipakai tersimpan di `dataset_root/split.json`. Untuk mengganti
+pembagian, cukup jalankan ulang `split_dataset.py` dengan nomor lain, lalu
+`verify_yolopx_format.py`. Langkah 1 sampai 3 tidak perlu diulang.
+
+Yang menentukan kualitas val dan test adalah jumlah rekaman dan gambarnya, bukan
+persentasenya. Test sebaiknya berisi minimal tiga rekaman dari ruas tol yang berbeda,
+dengan total sekitar 400 sampai 600 gambar, supaya angka mAP stabil dan tidak hanya
+mewakili satu ruas jalan.
+
+Opsi lain untuk eksperimen cepat: `--val 0.1 --test 0.1` membagi per frame secara acak,
+dan `--by-sequence` membagi rekaman secara acak.
 
 ## Struktur data mentah
 
@@ -486,7 +527,8 @@ dua kali lipat. Kecualikan `*/all/` saat membagikan dataset.
 - **Split per frame.** Secara default `split_dataset.py` membagi per frame secara acak,
   sehingga frame yang berurutan dari satu run bisa masuk train dan val sekaligus. Itu
   cukup untuk mengecek pipeline, tetapi untuk angka mAP yang dilaporkan pakai
-  `--by-sequence`.
+  `--by-sequence` atau `--val-seqs`/`--test-seqs` (lihat
+  [Pembagian train / val / test](#pembagian-train--val--test)).
 - **Kotak kecil dibuang.** Kotak yang tingginya kurang dari 25 px dibuang
   (`--min-box-h`, default 25). Angka ini diambil dari benchmark deteksi KITTI, yang
   membagi objek menjadi tiga tingkat: Easy (tinggi kotak minimal 40 px), Moderate dan
