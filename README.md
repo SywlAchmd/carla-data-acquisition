@@ -376,17 +376,20 @@ python3 build_yolopx_dataset.py --raw out/raw --dataset dataset_continuous --lan
 Setelah itu jalankan `split_dataset.py` dengan `--seed` yang sama untuk keduanya, supaya
 pembagian train/val/test-nya identik dan hasil kedua versi bisa dibandingkan langsung.
 
-**Drivable area** tidak bisa diambil dari mask semantic. Di jalan tol dengan pembatas
-tengah, kelas `Road` juga mencakup jalur arah berlawanan: permukaannya jalan, tetapi
-tidak boleh dilalui. Karena itu setiap frame menyimpan geometri OpenDRIVE dari jalur ego
-sendiri (lajurnya ditambah semua lajur searah di sebelahnya) sebagai titik tepi kiri dan
-kanan setiap 6 m sampai 200 m ke depan. `seg_gt.py` mengubahnya menjadi poligon,
-memproyeksikannya, lalu mengirisnya dengan piksel jalan dari segmentasi. Irisan itu
-sekaligus memotong area ke jalan yang benar-benar terlihat, membuang bahu jalan, dan
-melubangi area yang tertutup kendaraan, guard rail, atau pembatas.
+**Drivable area** punya dua mode lewat `seg_gt.py --da`:
 
-`seg_gt.py` mencetak **horizon gap**, yaitu jumlah baris piksel jalan yang terlihat di
-atas area berlabel. Kalau lebih dari 25 px, jangkauan geometri kurang jauh.
+- `road` (default): semua piksel kelas `Road` + `RoadLine` dari segmentasi, yaitu lajur
+  ego, lajur arah berlawanan, dan semua cabang pertigaan/perempatan. Trotoar, kendaraan,
+  dan pembatas punya kelas sendiri, jadi otomatis terpotong. Mode ini tidak butuh
+  geometri jalan, sehingga bisa dijalankan ulang pada data lama.
+- `carriageway`: hanya jalur ego sendiri. Setiap frame menyimpan geometri OpenDRIVE
+  jalur ego (lajurnya ditambah semua lajur searah di sebelahnya) sebagai titik tepi kiri
+  dan kanan setiap 6 m sampai 200 m ke depan. `seg_gt.py` mengubahnya menjadi poligon,
+  memproyeksikannya, lalu mengirisnya dengan piksel jalan dari segmentasi. Di
+  persimpangan hanya satu cabang yang diikuti.
+
+Untuk mode `carriageway`, `seg_gt.py` mencetak **horizon gap**, yaitu jumlah baris
+piksel jalan yang terlihat di atas area berlabel. Kalau lebih dari 25 px, jangkauan geometri kurang jauh.
 
 Kedua mask 8-bit dengan 0 untuk latar dan 255 untuk objek, sesuai loader YOLOPX yang
 melakukan threshold di atas 1.

@@ -6,7 +6,12 @@
 Writes out/raw/<town>_run_XXXX/{da,ll,ll_cont}/NNNNNN.png -- 8-bit, 0 = background,
 255 = foreground, which is what YOLOPX's loader expects (it thresholds at >1).
 
-Drivable area
+Drivable area (--da road, the default)
+    Every road pixel of the semantic camera (Road + RoadLine): the ego lane, the
+    oncoming lane, every branch of a junction. Vehicles, sidewalks and barriers
+    have their own tags, so they are already cut out. Needs no lane geometry.
+
+Drivable area (--da carriageway)
     The ego's own carriageway only: its lane plus every same-direction Driving
     lane beside it, taken from the OpenDRIVE geometry the capture stored per
     frame, projected into the image and filled. That geometric region is then
@@ -66,6 +71,10 @@ def drivable_mask(meta, K, sem_tag):
     return np.where(road, geo, 0).astype(np.uint8)
 
 
+def road_mask(sem_tag):
+    return np.where(np.isin(sem_tag, (TAG_ROAD, TAG_ROADLINE)), FG, 0).astype(np.uint8)
+
+
 def lane_mask(sem_tag):
     return np.where(sem_tag == TAG_ROADLINE, FG, 0).astype(np.uint8)
 
@@ -95,7 +104,7 @@ def lane_mask_continuous(meta, K, sem_tag, width=8, near=1.0):
     return np.where(road, geo, 0).astype(np.uint8)
 
 
-def process_run(run_dir, ll_width=8):
+def process_run(run_dir, ll_width=8, da_mode="road"):
     run = json.load(open(os.path.join(run_dir, "run.json")))
     cam = run["camera"]
     K = build_K(cam["width"], cam["height"], cam["fov"])
@@ -111,7 +120,7 @@ def process_run(run_dir, ll_width=8):
             sem = load_tags(run_dir, stem)
             if not meta.get("lanes"):
                 no_geo += 1
-            da = drivable_mask(meta, K, sem)
+            da = road_mask(sem) if da_mode == "road" else drivable_mask(meta, K, sem)
             ll = lane_mask(sem)
             cv2.imwrite(os.path.join(run_dir, "da", stem + ".png"), da)
             cv2.imwrite(os.path.join(run_dir, "ll", stem + ".png"), ll)
@@ -136,6 +145,9 @@ def main():
     ap.add_argument("--raw", default="out/raw")
     ap.add_argument("--ll-width", type=int, default=8,
                     help="line thickness in px for the continuous lane lines (ll_cont)")
+    ap.add_argument("--da", choices=("road", "carriageway"), default="road",
+                    help="road = every road pixel, oncoming lanes and junctions "
+                         "included; carriageway = ego lane + same-direction lanes only")
     args = ap.parse_args()
 
     runs = sorted(d for d in os.listdir(args.raw)
@@ -144,7 +156,8 @@ def main():
         sys.exit("no runs found in %s" % args.raw)
     tn, tda, tll, tno, gaps = 0, 0.0, 0.0, 0, []
     for r in runs:
-        n, da, ll, no_geo, gap = process_run(os.path.join(args.raw, r), args.ll_width)
+        n, da, ll, no_geo, gap = process_run(os.path.join(args.raw, r), args.ll_width,
+                                          args.da)
         print("%-14s %5d frames   drivable %5.1f%%   lane lines %4.2f%%   "
               "horizon gap %3.0f px%s"
               % (r, n, 100 * da, 100 * ll, gap, "" if not no_geo else
@@ -162,7 +175,7 @@ def main():
     if med_gap > 25:
         print("warning: %.0f px of visible road sits above the drivable label -- "
               "raise --da-ahead on the capture side" % med_gap)
-    if tno:
+    if tno and args.da == "carriageway":
         print("warning: %d frames had no lane geometry in meta.jsonl -- they were "
               "captured before --da-* existed and their da masks are empty" % tno)
 

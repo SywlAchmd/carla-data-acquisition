@@ -141,6 +141,17 @@ def test_drivable_mask_is_clipped_to_real_road_pixels():
     assert (drivable_mask(meta, K, np.full((H, W), 11, np.uint8)) > 0).sum() == 0
 
 
+def test_road_mask_keeps_every_road_pixel_but_not_cars():
+    from seg_gt import road_mask
+    sem = np.full((H, W), 11, np.uint8)
+    sem[H // 2:, :] = 1
+    sem[H // 2:, 600:610] = 24                   # a marking is road too
+    sem[H // 2:, 800:900] = 14                   # a car is not
+    m = road_mask(sem)
+    assert (m[H // 2:, :800] == 255).all()
+    assert not m[H // 2:, 800:900].any() and not m[:H // 2].any()
+
+
 def test_continuous_lanes_join_dashes_and_hide_behind_cars():
     """ll_cont draws the edges unbroken even where no marking is painted, and
     drops them where something other than road covers the pixel."""
