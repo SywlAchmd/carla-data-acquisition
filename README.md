@@ -262,7 +262,7 @@ python3 seg_gt.py --raw out/raw
 python3 build_yolopx_dataset.py --raw out/raw --dataset dataset_root --lanes marking
 
 # 4. bagi train / val / test per rekaman (lihat bagian pembagian di bawah)
-python3 split_dataset.py --dataset dataset_root --val-seqs 32 --test-seqs 33,34
+python3 split_dataset.py --dataset dataset_root --val-seqs 5,10,16,17,25,33,34 --test-seqs 32
 
 # 5. cek dengan aturan loader YOLOPX
 python3 verify_yolopx_format.py --dataset dataset_root
@@ -308,22 +308,64 @@ frame secara acak, frame yang nyaris sama bisa masuk train dan test sekaligus, s
 model cukup "menghafal" untuk mendapat skor tinggi. Dengan pembagian per rekaman, val
 dan test benar-benar berisi situasi yang belum pernah dilihat model.
 
-Rekaman val dan test diambil dari **Town04**, karena skenario overtaking dengan MPC
-diuji di jalan tol Town04. Model persepsi harus dinilai di lingkungan tempat ia dipakai.
-Kota lain (Town01, Town02, Town05, Town10HD) seluruhnya masuk train untuk menambah
-variasi, dan sebagian rekaman Town04 juga masuk train supaya model mengenal jalan tol.
+Data **test** hanya berisi rekaman **Town04**, karena skenario overtaking dengan MPC
+diuji di jalan tol Town04. Model persepsi harus dinilai di lingkungan tempat ia
+dipakai, dan rekaman test tidak pernah dipakai selama training maupun pemilihan
+checkpoint.
+
+Data **train** dan **val** berisi semua kota (Town01, Town02, Town05, Town10HD) ditambah
+sebagian rekaman Town04. Dari setiap kota diambil satu rekaman berukuran sedang
+(Town05: dua rekaman kecil) untuk val, sehingga val mewakili semua lingkungan tanpa
+mengurangi banyak data train. Rekaman Town04 ikut dibagi ke train dan val supaya model
+mengenal jalan tol dan pemilihan checkpoint juga memperhitungkan jalan tol.
+
+Urutannya: test disisihkan lebih dulu, lalu sisa datanya dibagi menjadi train dan val.
+Rekaman yang tidak disebut di `--val-seqs` atau `--test-seqs` otomatis masuk train.
 
 ```bash
-python3 split_dataset.py --dataset dataset_root --val-seqs 32 --test-seqs 33,34
+python3 split_dataset.py --dataset dataset_root --val-seqs 5,10,16,17,25,33,34 --test-seqs 32
 ```
 
-| split | rekaman | fungsi |
-|---|---|---|
-| train | Town04 run 28, 29, 30, 31 + semua rekaman kota lain | melatih model |
-| val | Town04 run 32 | memilih checkpoint terbaik selama training |
-| test | Town04 run 33, 34 | angka akhir di laporan, tidak dipakai selama tuning |
+| split | fungsi |
+|---|---|
+| train | melatih model |
+| val | memilih checkpoint terbaik selama training |
+| test | angka akhir di laporan, tidak dipakai selama training maupun tuning |
 
-Rekaman yang tidak disebut di `--val-seqs` atau `--test-seqs` otomatis masuk train.
+### Total data dan perbandingan
+
+| split | rekaman | gambar | objek (`car`) | dari total | train : val |
+|---|---|---|---|---|---|
+| train | 27 | 3.384 | 7.994 | 82,9% | 85,5% |
+| val | 7 | 573 | 865 | 14,0% | 14,5% |
+| test | 1 | 125 | 184 | 3,1% | tidak ikut |
+| **total** | **35** | **4.082** | **9.043** | 100% | |
+
+Test berada di luar perbandingan. Dari 3.957 gambar sisanya, train dan val dibagi
+sekitar **85 : 15**. Rasio ini hasil pemilihan rekaman, bukan persentase yang ditetapkan
+lebih dulu, karena satu rekaman tidak pernah dipecah ke dua split.
+
+### Rekaman per split
+
+| split | peta | rekaman (run) | jumlah rekaman | gambar |
+|---|---|---|---|---|
+| train | Town01 | 0, 1, 2, 3, 4, 6, 7, 8 | 8 | 1.013 |
+| train | Town02_Opt | 9, 11, 12, 13, 14, 15 | 6 | 887 |
+| train | Town05_Opt | 18, 19, 20, 21 | 4 | 415 |
+| train | Town10HD_Opt | 22, 23, 24, 26, 27 | 5 | 874 |
+| train | Town04 | 28, 29, 30, 31 | 4 | 195 |
+| val | Town01 | 5 | 1 | 151 |
+| val | Town02_Opt | 10 | 1 | 126 |
+| val | Town05_Opt | 16, 17 | 2 | 72 |
+| val | Town10HD_Opt | 25 | 1 | 68 |
+| val | Town04 | 33, 34 | 2 | 156 |
+| test | Town04 | 32 | 1 | 125 |
+
+Data jalan tol (Town04) terbagi menjadi 195 gambar train, 156 val, dan 125 test.
+
+Karena val berisi jalan kota dan jalan tol, skor val adalah campuran keduanya. Kinerja
+di jalan tol dilaporkan dari skor test.
+
 Pembagian yang dipakai tersimpan di `dataset_root/split.json`. Untuk mengganti
 pembagian, cukup jalankan ulang `split_dataset.py` dengan nomor lain, lalu
 `verify_yolopx_format.py`. Langkah 1 sampai 3 tidak perlu diulang.
