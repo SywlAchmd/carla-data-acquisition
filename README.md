@@ -20,6 +20,7 @@ sesudahnya tidak peduli data itu berasal dari mana.
 |---|---|
 | `rig.py` | konfigurasi kendaraan ego dan kamera, plus fungsi yang dipakai bersama |
 | `manual_drive.py` | kendarai Dodge Charger dengan WASD, tekan R untuk merekam |
+| `minimap.py` | peta 2D real time: jalan, arah lajur, posisi ego dan kendaraan lain |
 | `spawn_traffic.py` | spawn kendaraan lain (Traffic Manager), terpisah dari skrip rekam |
 | `capture_overtaking.py` | rekaman otomatis skenario menyalip di Town04 |
 | `run_capture.sh` | menjalankan `capture_overtaking.py` dan me-restart server kalau crash |
@@ -149,6 +150,18 @@ hanya mobil penumpang roda empat, supaya semua objek tetap satu kelas `car`.
 (ESC). Traffic Manager hidup di dalam proses `manual_drive.py`, dan server CARLA bisa
 segfault kalau Traffic Manager mati saat masih memegang kendaraan. Kedua skrip sudah
 menangani kasus itu, tapi urutan di atas tetap yang paling aman.
+
+**Peta dari atas.** Jangan pakai kamera spectator untuk melihat posisi mobil, karena
+itu membebani server. Jalankan di terminal lain:
+
+```bash
+python3 minimap.py
+```
+
+Skrip ini hanya membaca posisi aktor, tanpa kamera dan tanpa mengubah setting world,
+jadi aman berjalan bersama `manual_drive.py`. Ego berwarna merah, kendaraan lain abu-abu,
+dan panah menunjukkan arah lajur. Tekan `F` untuk mengikuti ego (zoom), `S` untuk
+menampilkan nomor spawn point (untuk `manual_drive.py --spawn`), dan `ESC` untuk keluar.
 
 Opsi lain `manual_drive.py`:
 
