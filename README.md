@@ -326,7 +326,12 @@ Empat langkah CarFree:
 3. **Algoritma 2.** Piksel tengah kotak awal harus ber-kelas target di mask segmentasi.
    Kalau tidak, objek dianggap tertutup dan dibuang. `--visibility multi5` memakai lima
    titik (tengah dan empat sudut), perluasan yang disarankan di paper untuk objek yang
-   tertutup sebagian.
+   tertutup sebagian. Dengan `--mask-source instance` uji ini dilewati: mask per aktor
+   sudah membuktikan mobil itu terlihat, sedangkan uji piksel tengah salah membuang
+   mobil yang bagian tengahnya tertutup, atau mobil yang sejajar dengan ego (kotak
+   awalnya sangat besar sehingga titik tengahnya jatuh di luar mobil). Sebagai gantinya,
+   kotak dibuang kalau piksel mobil yang terlihat kurang dari 10% luas kotak, misalnya
+   mobil yang hanya tampak beberapa piksel lewat celah pagar.
 4. **Algoritma 3.** Setiap sisi kotak digeser ke dalam sampai menyentuh piksel target.
    Sisi yang mentok di tepi gambar berhenti di situ, sehingga kotak yang terpotong tetap
    tepat sampai piksel.

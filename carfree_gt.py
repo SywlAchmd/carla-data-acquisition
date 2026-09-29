@@ -9,6 +9,9 @@ Implements the paper's four steps verbatim:
   5.3 Algorithm 2                 center-pixel visibility test on the seg mask
   5.4 Algorithm 3                 shrink each side until it touches the silhouette
 
+With --mask-source instance, 5.3 is replaced by "the actor has its own pixels
+and they fill at least 10% of the fitted box" -- see frame_labels.
+
 Resolution-agnostic: everything works in pixel space, so 1280x720 is fine even
 though the paper used 960x540.
 
@@ -33,6 +36,7 @@ TAG_CAR = 14
 TAG_TRUCK = 15
 TAG_BUS = 16
 VEHICLE_TAGS = (TAG_CAR, TAG_TRUCK, TAG_BUS)
+MIN_INSTANCE_FILL = 0.10     # visible share of the fitted box, instance mode only
 
 CATEGORY_TO_TAGS = {"car": (TAG_CAR,), "truck": (TAG_TRUCK,), "bus": (TAG_BUS,),
                     "person": (TAG_PEDESTRIAN,)}
@@ -283,7 +287,12 @@ def frame_labels(meta, K, sem_tag, inst=None, mask_source="semantic",
             target = np.isin(sem_tag, tags)
 
         # 5.3 -------------------------------------------------------------
-        if not is_visible(raw, target, visibility):
+        # The probe only matters for the semantic mask, where it stops the box
+        # snapping onto a different car. An instance mask already proves this
+        # actor is visible, and the probe wrongly rejects it whenever the box
+        # centre is hidden (occluded middle) or off-image (a car alongside,
+        # whose cuboid straddles the camera plane projects to a huge box).
+        if mask_source != "instance" and not is_visible(raw, target, visibility):
             continue
 
         # 5.4 -------------------------------------------------------------
@@ -299,12 +308,17 @@ def frame_labels(meta, K, sem_tag, inst=None, mask_source="semantic",
             stats["too_small"] += 1
             continue
 
-        stats["boxes"] += 1
         if actor_mask is not None:
             others = veh_sem & ~actor_mask
             occluded, fill, npx = occlusion_attrs(fitted, actor_mask, others)
         else:
             occluded, fill, npx = occlusion_attrs(fitted, target, None)
+        # without the centre probe, a few stray pixels (a car seen through a
+        # fence, a sliver behind another car) would still get a box
+        if mask_source == "instance" and fill < MIN_INSTANCE_FILL:
+            stats["too_sparse"] += 1
+            continue
+        stats["boxes"] += 1
 
         labels.append({
             "id": actor["id"],
@@ -369,7 +383,7 @@ def main():
                   if os.path.isdir(os.path.join(args.raw, d)))
     if not runs:
         sys.exit("no runs found in %s" % args.raw)
-    tf = tb = total_miss = total_small = 0
+    tf = tb = total_miss = total_small = total_sparse = 0
     for r in runs:
         f, b, st = process_run(os.path.join(args.raw, r), args.mask_source,
                                args.visibility, args.min_box_px, args.max_distance,
@@ -382,11 +396,15 @@ def main():
         tb += b
         total_miss += miss
         total_small += st["too_small"]
+        total_sparse += st["too_sparse"]
     print("-" * 52)
     print("TOTAL          %5d frames  %5d boxes  (%.2f boxes/frame)"
           % (tf, tb, tb / max(tf, 1)))
     if total_small:
         print("dropped %d boxes shorter than %.0f px" % (total_small, args.min_box_h))
+    if total_sparse:
+        print("dropped %d boxes under %.0f%% visible (stray pixels)"
+              % (total_sparse, 100 * MIN_INSTANCE_FILL))
     if total_miss:
         fate = ("were dropped as not visible" if args.mask_source == "instance"
                 else "fell back to the semantic mask")

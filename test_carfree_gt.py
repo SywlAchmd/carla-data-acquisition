@@ -93,6 +93,34 @@ def test_second_car_does_not_stop_the_shrink():
     assert fit_to_boundary((450.0, 250.0, 950.0, 450.0), m) == (600.0, 300.0, 700.0, 400.0)
 
 
+def test_car_alongside_is_labelled_from_its_instance_mask():
+    """A car next to the ego straddles the camera plane: its projected box is
+    huge and its centre lands off the car, which fails the paper's centre probe.
+    The instance mask proves it is visible, so that mode must still label it."""
+    from carfree_gt import frame_labels
+    K = build_K(W, H, 90.0)
+    # the cuboid of a real case (town10hd_opt_run_0023 frame 40): 1.2 m behind
+    # the camera to 3.8 m ahead, 2.8..4.9 m to the left
+    verts = [[x, y, z] for x in (-1.21, 3.77) for y in (-4.87, -2.83) for z in (-1.66, -0.11)]
+    meta = {"camera": {"world_matrix": np.eye(4).tolist()},
+            "actors": [{"id": 7, "category": "car", "distance": 2.5,
+                        "type_id": "vehicle.test", "verts_world": verts}]}
+    sem = np.full((H, W), 1, np.uint8)
+    sem[496:717, :69] = TAG_CAR
+    iid = np.zeros((H, W), np.uint16)
+    iid[496:717, :69] = 7
+    labels = frame_labels(meta, K, sem, inst=(sem, iid), mask_source="instance",
+                          min_box_h=25)
+    assert len(labels) == 1
+    assert labels[0]["box2d"] == {"x1": 0.0, "y1": 496.0, "x2": 69.0, "y2": 717.0}
+    assert labels[0]["attributes"]["truncated"]
+    # a handful of stray pixels spread over a big box is not a labelled car
+    iid[:] = 0
+    iid[500:716:40, 0:69:30] = 7
+    assert frame_labels(meta, K, sem, inst=(sem, iid), mask_source="instance",
+                        min_box_h=25) == []
+
+
 def test_occlusion_attrs():
     actor = car_mask(600, 300, 700, 400)
     clean = occlusion_attrs((600, 300, 700, 400), actor, np.zeros((H, W), bool))
