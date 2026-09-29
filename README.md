@@ -161,12 +161,31 @@ Opsi lain `manual_drive.py`:
 | `--fps` / `--record-every` | 20 / 2 | frekuensi simulasi / simpan 1 dari N tick |
 | `--no-depth` | | tidak merekam depth (hemat sekitar 400 kB per frame) |
 | `--keep-empty` | | simpan juga frame tanpa mobil |
-| `--no-parked` | | hilangkan mobil parkir bawaan map (hanya map `_Opt`) |
+| `--unload` | `ParkedVehicles,Particles` | layer map yang dibuang, dipisah koma, atau `none` (hanya map `_Opt`) |
 
-Soal `--no-parked`: di beberapa kota ada mobil parkir yang merupakan bagian dari map,
-bukan aktor. Pikselnya ber-tag `Car`, tapi tidak punya kotak 3D sehingga tidak pernah
-mendapat label, dan model akan belajar bahwa mobil itu latar belakang. Town04 praktis
-tidak punya mobil parkir; untuk kota lain pakai versi `_Opt` beserta opsi ini.
+Soal `--unload`: map `_Opt` terdiri dari layer (`Buildings`, `Decals`, `Foliage`,
+`Ground`, `ParkedVehicles`, `Particles`, `Props`, `StreetLights`, `Walls`) yang bisa
+dibuang saat runtime. Jalan, trotoar, lampu lalu lintas, dan rambu bukan layer, jadi
+selalu ada. Default-nya membuang dua layer yang tidak menambah apa-apa untuk dataset:
+
+- `ParkedVehicles`: mobil parkir bawaan map bukan aktor. Pikselnya ber-tag `Car`, tapi
+  tidak punya kotak 3D sehingga tidak pernah mendapat label, dan model akan belajar
+  bahwa mobil itu latar belakang.
+- `Particles`: efek partikel (daun jatuh, asap), berat di GPU dan tidak terlihat penting.
+
+Lingkungan yang membuat gambar mirip dunia nyata (gedung, pohon, tembok, tiang lampu,
+props) tetap dimuat. Kedua layer default ini hanya menghemat sekitar 50 MB VRAM. Hasil
+ukur di Town10HD_Opt (Epic): `Buildings` sekitar 2,1 GB, `Props` sekitar 330 MB, dan
+`Foliage` hampir nol karena kotanya sedikit pohon. Di kota yang banyak pohon seperti
+Town02, `Foliage` bisa lebih berat. Kalau server masih sering force close, coba buang
+`Foliage` dulu:
+
+```bash
+python3 manual_drive.py --map Town02_Opt --unload ParkedVehicles,Particles,Foliage
+```
+
+Map tanpa `_Opt` (misalnya `Town04`) tidak punya layer, jadi opsi ini diabaikan.
+Opsi lama `--no-parked` masih diterima dan sama dengan menambahkan `ParkedVehicles`.
 
 ## Merekam secara otomatis
 

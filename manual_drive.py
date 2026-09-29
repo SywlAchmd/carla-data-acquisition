@@ -140,18 +140,33 @@ def main():
                     help="skip the depth camera (~400 kB/frame)")
     ap.add_argument("--keep-empty", action="store_true",
                     help="also save frames with no vehicle in view")
+    ap.add_argument("--unload", default="ParkedVehicles,Particles",
+                    help="comma-separated carla.MapLayer names to unload, or 'none' "
+                         "(only *_Opt towns have layers). Parked cars have pixels but "
+                         "no actor, so they never get a box. Buildings is by far the "
+                         "heaviest layer (~2 GB on Town10HD_Opt) if the GPU runs out")
     ap.add_argument("--no-parked", action="store_true",
-                    help="unload the parked-car layer (only works on *_Opt towns); "
-                         "those cars have pixels but no actor, so they never get a box")
+                    help="kept for old commands: same as adding ParkedVehicles to --unload")
     args = ap.parse_args()
 
     client = carla.Client(args.host, args.port)
     client.set_timeout(60.0)
     world = client.load_world(args.map) if args.map else client.get_world()
-    if args.no_parked:
-        world.unload_map_layer(carla.MapLayer.ParkedVehicles)
     cmap = world.get_map()
     map_name = cmap.name.split("/")[-1]
+    layers = [n.strip() for n in args.unload.split(",") if n.strip().lower() != "none"]
+    if args.no_parked and "ParkedVehicles" not in layers:
+        layers.append("ParkedVehicles")
+    unknown = [n for n in layers if not hasattr(carla.MapLayer, n)]
+    if unknown:
+        sys.exit("unknown map layer(s): %s" % ", ".join(unknown))
+    if layers and not map_name.endswith("_Opt"):
+        print("warning: %s has no map layers, --unload ignored (use %s_Opt)"
+              % (map_name, map_name))
+    elif layers:
+        for n in layers:
+            world.unload_map_layer(getattr(carla.MapLayer, n))
+        print("unloaded layers:", ", ".join(layers))
     world.set_weather(getattr(carla.WeatherParameters, args.weather))
 
     original = world.get_settings()
